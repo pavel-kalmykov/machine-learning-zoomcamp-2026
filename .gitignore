@@ -1,0 +1,63 @@
+# Data files (course datasets and downloads)
+*.csv
+*.parquet
+*.gz
+*.zip
+*.tgz
+data/
+!**/seeds/**
+!**/data/*.json
+
+# Trained model artifacts
+models/
+*.pkl
+*.bin
+*.onnx
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+.ruff_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# marimo
+__marimo__/
+
+# Environment variables (API keys)
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local stores
+*.duckdb
+*.duckdb.wal
+*.sqlite
+*.sqlite3
+*.db
+
+# Build / cache
+target/
+logs/
+mlruns/
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Keep directory structure
+!**/.gitkeep
