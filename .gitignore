@@ -61,3 +61,6 @@ mlruns/
 
 # Keep directory structure
 !**/.gitkeep
+
+# Obsidian
+.obsidian/
