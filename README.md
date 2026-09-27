@@ -20,16 +20,18 @@ Homework statements are copied verbatim from [`cohorts/2026/homework/`](https://
 
 ## Progress
 
-- [ ] Module 1: Introduction to Machine Learning (deadline 21 September 2026)
-- [ ] Module 2: Machine Learning for Regression (deadline 28 September 2026)
-- [ ] Module 3: Machine Learning for Classification (deadline 5 October 2026)
-- [ ] Module 4: Evaluation Metrics for Classification (deadline 12 October 2026)
-- [ ] Module 5: Deploying Machine Learning Models (deadline 19 October 2026)
-- [ ] Module 6: Decision Trees and Ensemble Learning (deadline 26 October 2026)
-- [ ] Midterm Project (submission 9 November 2026)
-- [ ] Module 8: Neural Networks and Deep Learning (deadline 23 November 2026)
-- [ ] Module 9: Serverless Deep Learning (deadline 30 November 2026)
-- [ ] Module 10: Kubernetes and TensorFlow Serving (deadline 7 December 2026)
+Deadlines from the [course platform](https://courses.datatalks.club/ml-zoomcamp-2026/), all at 23:00.
+
+- [ ] Module 1: Introduction to Machine Learning (deadline 28 September 2026)
+- [ ] Module 2: Machine Learning for Regression (deadline 5 October 2026)
+- [ ] Module 3: Machine Learning for Classification (deadline 12 October 2026)
+- [ ] Module 4: Evaluation Metrics for Classification (deadline 19 October 2026)
+- [ ] Module 5: Deploying Machine Learning Models (deadline 26 October 2026)
+- [ ] Module 6: Decision Trees and Ensemble Learning (deadline 2 November 2026)
+- [ ] Midterm Project (submission 9 November, peer review 16 November 2026)
+- [ ] Module 8: Neural Networks and Deep Learning (deadline 30 November 2026)
+- [ ] Module 9: Serverless Deep Learning (deadline 7 December 2026)
+- [ ] Module 10: Kubernetes and TensorFlow Serving (deadline 14 December 2026)
 - [ ] Capstone Project 1 (submission 4 January 2027)
 - [ ] Capstone Project 2 (submission 18 January 2027)
 
