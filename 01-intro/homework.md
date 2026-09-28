@@ -18,6 +18,23 @@ You can get the version information using the `__version__` field:
 pd.__version__
 ```
 
+### Solution
+
+**Version check (project venv via uv)**:
+
+```python
+import pandas as pd
+pd.__version__
+```
+
+**Result**:
+
+```
+3.0.6
+```
+
+**Answer**: `3.0.6`
+
 ## Getting the data 
 
 For this homework, we'll use the 2026 Car Fuel Efficiency dataset. Download it from <a href='https://raw.githubusercontent.com/DataTalksClub/machine-learning-zoomcamp/main/cohorts/2026/data/car_fuel_efficiency_2026.csv'>here</a>.
@@ -31,6 +48,8 @@ Or just open it with your browser and click "Save as...".
 
 Now read it with Pandas.
 
+Loaded with `df = pd.read_csv("01-intro/car_fuel_efficiency_2026.csv")`; the working notebook is `01-intro/hw01.py` (marimo).
+
 ## Q2. Records count
 
 How many records are in the dataset?
@@ -40,6 +59,20 @@ How many records are in the dataset?
 - 10000
 - 15000
 
+### Solution
+
+```python
+len(df), df.shape
+```
+
+**Result**:
+
+```
+(10000, 11)
+```
+
+**Answer**: `10000`
+
 ## Q3. Fuel types
 
 How many fuel types are presented in the dataset?
@@ -48,6 +81,20 @@ How many fuel types are presented in the dataset?
 - 2
 - 3
 - 4
+
+### Solution
+
+```python
+df["fuel_type"].nunique()
+```
+
+**Result**:
+
+```
+3
+```
+
+**Answer**: `3`
 
 ## Q4. Missing values
 
@@ -59,6 +106,23 @@ How many columns in the dataset have missing values?
 - 3
 - 4
 
+### Solution
+
+```python
+missing = df.isnull().sum()
+missing[missing > 0]
+```
+
+**Result**:
+
+```
+horsepower      877
+acceleration    264
+dtype: int64
+```
+
+**Answer**: `2` columns (`horsepower`, `acceleration`)
+
 ## Q5. Max fuel efficiency
 
 What's the maximum fuel efficiency of cars from Asia?
@@ -67,6 +131,20 @@ What's the maximum fuel efficiency of cars from Asia?
 - 31.2
 - 41.2
 - 51.2
+
+### Solution
+
+```python
+df[df["origin"] == "Asia"]["fuel_efficiency_mpg"].max()
+```
+
+**Result**:
+
+```
+41.2
+```
+
+**Answer**: `41.2`
 
 ## Q6. Median value of horsepower
 
@@ -82,6 +160,24 @@ Has it changed?
 - Yes, it decreased
 - No
 
+### Solution
+
+```python
+m_before = df["horsepower"].median()          # 254.0
+hp_mode = df["horsepower"].mode()             # 252.0
+df_hp_without_nan = df["horsepower"].fillna(hp_mode[0])
+m_after = df_hp_without_nan.median()          # 252.0
+```
+
+**Result**:
+
+```
+median before: 254.0
+mode:          252.0
+median after:  252.0
+```
+
+**Answer**: Yes, it decreased. The mode (252.0) sits below the current median, so injecting 877 values of that mass shifts the center of the ordered distribution down.
 
 ## Q7. Sum of weights
 
@@ -102,6 +198,36 @@ Has it changed?
 - 3.69
 - 36.9
 
+### Solution
+
+```python
+X = df[df["origin"] == "Asia"][["vehicle_weight", "model_year"]].head(7).to_numpy()
+XTX = X.T @ X
+w = np.linalg.inv(XTX) @ X.T @ np.array([1100, 1300, 800, 900, 1000, 1100, 1200])
+w.sum()
+```
+
+**Result**:
+
+```
+w:    [0.13644777 0.2327492 ]
+sum:  0.36919696904925203
+```
+
+**Answer**: `0.369`
+
+## Answers
+
+- Q1. Pandas version. **3.0.6**
+- Q2. Records count. **10000**
+- Q3. Fuel types. **3**
+- Q4. Columns with missing values. **2** (`horsepower` 877, `acceleration` 264)
+- Q5. Max fuel efficiency from Asia. **41.2**
+- Q6. Median after fillna with the mode. **Yes, it decreased** (254.0 -> 252.0)
+- Q7. Sum of weights. **0.369**
+
+Details and evidence in each `### Solution` block above; full working notebook in `01-intro/hw01.py`.
+
 ## Learning in Public
 
 As part of this course, we encourage you to learn in public. Sharing your progress helps you reflect, stay accountable, and connect with others.
@@ -113,7 +239,7 @@ How to do it
 - Don't forget to tag Alexey Grigorev and use #mlzoomcamp hashtag
 
 Alexey on social media: [LinkedIn](https://www.linkedin.com/in/agrigorev/), [Twitter/X](https://x.com/Al_Grigor)
-DTC on social media: [LinkedIn](https://www.linkedin.com/company/datatalks-club/), [Twitter/X](https://x.com/DataTalksClub)
+DTC on social media: [LinkedIn](https://www.linkedin.com/company/datatalks-club/), [Twitter/X](https://twitter.com/DataTalksClub)
 
 ---
 
@@ -171,7 +297,7 @@ Day 1 of #mlzoomcamp ✅
 
 Module 1: Intro to ML
 
-Here’s what I learned 👇
+Here’s what you learned 👇
 
 (then add 2–3 tweets: 💡 takeaway, 🤔 challenge, 🚀 goal for Module 2)
 
