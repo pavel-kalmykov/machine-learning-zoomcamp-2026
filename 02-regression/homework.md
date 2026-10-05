@@ -15,6 +15,8 @@ wget https://raw.githubusercontent.com/DataTalksClub/machine-learning-zoomcamp/m
 
 The goal of this homework is to create a regression model for predicting the car fuel efficiency (column `'fuel_efficiency_mpg'`).
 
+Loaded with `pd.read_csv("01-intro/car_fuel_efficiency_2026.csv")`, filtered to the five listed columns. Working notebook: `02-regression/hw02.py` (marimo).
+
 ### Preparing the dataset 
 
 Use only the following columns:
@@ -29,6 +31,8 @@ Use only the following columns:
 
 * Look at the `fuel_efficiency_mpg` variable. Does it have a long tail? 
 
+**No**: skewness is 0.08 (well inside the ±0.5 symmetric range) and mean ≈ median, so the distribution is roughly bell-shaped and no log transform is needed.
+
 ### Question 1
 
 There's one column with missing values. What is it?
@@ -38,6 +42,19 @@ There's one column with missing values. What is it?
 * `'vehicle_weight'`
 * `'model_year'`
 
+### Solution
+
+```python
+df.columns[df.isnull().any()][0]
+```
+
+**Result**:
+
+```
+horsepower   877
+```
+
+**Answer**: `'horsepower'`
 
 ### Question 2
 
@@ -47,6 +64,20 @@ What's the median (50% percentile) for variable `'horsepower'`?
 - 254
 - 304
 - 354
+
+### Solution
+
+```python
+df["horsepower"].median()   # pandas skips the NaNs
+```
+
+**Result**:
+
+```
+254.0
+```
+
+**Answer**: `254`
 
 ### Prepare and split the dataset
 
@@ -69,6 +100,7 @@ df_test = df.iloc[idx[n_train + n_val:]]
 
 For Q5, repeat the same block with each listed seed. For Q6, use seed `9`.
 
+Implemented as `split_shuffled(df, seed)` in the notebook; seed 42 used below.
 
 ### Question 3
 
@@ -87,6 +119,30 @@ Options:
 - With mean
 - Both are equally good
 
+### Solution
+
+```python
+mean_hp = df_train["horsepower"].mean()          # training only
+X_zero_train = df_train.fillna({"horsepower": 0})
+X_zero_val = df_val.fillna({"horsepower": 0})
+X_mean_train = df_train.fillna({"horsepower": mean_hp})
+X_mean_val = df_val.fillna({"horsepower": mean_hp})
+
+w = train_linear_regression(X_zero_train, y_train)
+rmse(y_val, w[0] + X_zero_val.dot(w[1:]))
+
+w = train_linear_regression(X_mean_train, y_train)
+rmse(y_val, w[0] + X_mean_val.dot(w[1:]))
+```
+
+**Result**:
+
+```
+RMSE with 0:    2.205
+RMSE with mean: 2.202
+```
+
+**Answer**: With mean (2.202 vs 2.205). The validation NaNs are also filled with the training mean.
 
 ### Question 4
 
@@ -110,6 +166,27 @@ Options:
 - 10
 - 100
 
+### Solution
+
+```python
+for r in [0, 0.01, 0.1, 1, 5, 10, 100]:
+    w = train_linear_regression(X_zero_train, y_train, r)
+    scores_r[r] = round(rmse(y_val, w[0] + X_zero_val.dot(w[1:])), 4)
+```
+
+**Result**:
+
+```
+r=0:    2.2053
+r=0.01: 2.2058
+r=0.1:  2.2241
+r=1:    2.3492
+r=5:    2.4094
+r=10:   2.4195
+r=100:  2.4292
+```
+
+**Answer**: `0` (the smallest r, per the tie rule: with this dataset the regularization does not improve validation RMSE).
 
 ### Question 5 
 
@@ -133,6 +210,24 @@ What's the value of std?
 > If it's high, the values are different. 
 > If standard deviation of scores is low, then our model is *stable*.
 
+### Solution
+
+```python
+seed_scores = []
+for seed in range(10):
+    df_train, df_val, _ = split_shuffled(df, seed)
+    w = train_linear_regression(X_train_zero_filled, y_train)
+    seed_scores.append(rmse(y_val, y_pred))
+round(float(np.std(seed_scores)), 3)
+```
+
+**Result**:
+
+```
+0.029
+```
+
+**Answer**: `0.029` (a low std: the model is stable across seeds).
 
 ### Question 6
 
@@ -147,6 +242,23 @@ Options:
 - 2.236
 - 22.10
 - 221.0
+
+### Solution
+
+```python
+df_train9, df_val9, df_test9 = split_shuffled(df, seed=9)
+df_full = pd.concat([df_train9, df_val9])
+w = train_linear_regression(X_full, y_full, r=0.001)
+rmse(y_test, y_pred)
+```
+
+**Result**:
+
+```
+2.236
+```
+
+**Answer**: `2.236`
 
 ## Submit the results
 
