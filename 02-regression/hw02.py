@@ -118,48 +118,48 @@ def _(df, np, pd):
 @app.cell
 def _(column_with_nans, df_train, df_val, fill_nans, rmse, train_linear_regression, xy):
     # Question 3
-    df_train_0 = fill_nans(df_train, column_with_nans, 0)
-    df_val_0 = fill_nans(df_val, column_with_nans, 0)
-    mean_hp = df_train[column_with_nans].mean()
-    df_train_m = fill_nans(df_train, column_with_nans, mean_hp)
-    df_val_m = fill_nans(df_val, column_with_nans, mean_hp)
+    def run_q3():
+        df_train_0 = fill_nans(df_train, column_with_nans, 0)
+        df_val_0 = fill_nans(df_val, column_with_nans, 0)
+        mean_hp = df_train[column_with_nans].mean()
+        df_train_m = fill_nans(df_train, column_with_nans, mean_hp)
+        df_val_m = fill_nans(df_val, column_with_nans, mean_hp)
 
-    X_train, y_train = xy(df_train_0)
-    w = train_linear_regression(X_train, y_train)
-    X_val, y_val = xy(df_val_0)
-    rmse_zero = round(rmse(y_val, w[0] + X_val.dot(w[1:])), 3)
+        X_train, y_train = xy(df_train_0)
+        w = train_linear_regression(X_train, y_train)
+        X_val, y_val = xy(df_val_0)
+        rmse_zero = round(rmse(y_val, w[0] + X_val.dot(w[1:])), 3)
 
-    X_train_m, y_train_m = xy(df_train_m)
-    w_m = train_linear_regression(X_train_m, y_train_m)
-    X_val_m, y_val_m = xy(df_val_m)
-    rmse_mean = round(rmse(y_val_m, w_m[0] + X_val_m.dot(w_m[1:])), 3)
+        X_train_m, y_train_m = xy(df_train_m)
+        w_m = train_linear_regression(X_train_m, y_train_m)
+        X_val_m, y_val_m = xy(df_val_m)
+        rmse_mean = round(rmse(y_val_m, w_m[0] + X_val_m.dot(w_m[1:])), 3)
+        return {"RMSE with 0": rmse_zero, "RMSE with mean": rmse_mean, "best": min(rmse_zero, rmse_mean)}
 
-    scores = {
-        "RMSE with 0": rmse_zero,
-        "RMSE with mean": rmse_mean,
-        "best": min(rmse_zero, rmse_mean),
-    }
-    scores
+    q3 = run_q3()
+    q3
     return
 
 
 @app.cell
-def _(
-    column_with_nans, df_train, df_val, fill_nans, np, rmse, train_linear_regression, xy
-):
+def _(column_with_nans, df_train, df_val, fill_nans, np, rmse, train_linear_regression, xy):
     # Question 4
-    scores_r = {}
-    weights_evidence = {}
-    for r in [0, 0.01, 0.1, 1, 5, 10, 100]:
-        X_train_r, y_train_r = xy(fill_nans(df_train, column_with_nans, 0))
-        X_val_r, y_val_r = xy(fill_nans(df_val, column_with_nans, 0))
-        w = train_linear_regression(X_train_r, y_train_r, r)
-        scores_r[r] = round(rmse(y_val_r, w[0] + X_val_r.dot(w[1:])), 4)
-        if r in (0, 100):
-            weights_evidence[r] = [round(w[0], 3)] + [round(v, 3) for v in w[1:]]
-    best_r = min(scores_r, key=scores_r.get)
-    weights_evidence
-    return (best_r, weights_evidence, scores_r)
+    def run_q4():
+        scores_r = {}
+        weights_evidence = {}
+        for r in [0, 0.01, 0.1, 1, 5, 10, 100]:
+            X_train_r, y_train_r = xy(fill_nans(df_train, column_with_nans, 0))
+            X_val_r, y_val_r = xy(fill_nans(df_val, column_with_nans, 0))
+            w = train_linear_regression(X_train_r, y_train_r, r)
+            scores_r[r] = round(rmse(y_val_r, w[0] + X_val_r.dot(w[1:])), 4)
+            if r in (0, 100):
+                weights_evidence[r] = [round(w[0], 3)] + [round(v, 3) for v in w[1:]]
+        best_r = min(scores_r, key=scores_r.get)
+        return scores_r, weights_evidence, best_r
+
+    scores_r, weights_evidence, best_r = run_q4()
+    scores_r
+    return (weights_evidence, best_r)
 
 
 @app.cell
@@ -169,47 +169,36 @@ def _(scores_r):
 
 
 @app.cell
-def _(
-    column_with_nans,
-    df,
-    fill_nans,
-    np,
-    rmse,
-    split_shuffled,
-    train_linear_regression,
-    xy,
-):
+def _(column_with_nans, df, fill_nans, np, rmse, split_shuffled, train_linear_regression, xy):
     # Question 5
-    seed_scores = []
-    for seed in range(10):
-        dtr, dv, _ = split_shuffled(df, seed)
-        X_train, y_train = xy(fill_nans(dtr, column_with_nans, 0))
-        w = train_linear_regression(X_train, y_train)
-        X_val, y_val = xy(fill_nans(dv, column_with_nans, 0))
-        seed_scores.append(rmse(y_val, w[0] + X_val.dot(w[1:])))
-    round(float(np.std(seed_scores)), 3)
+    def run_q5():
+        seed_scores = []
+        for seed in range(10):
+            dtr, dv, _ = split_shuffled(df, seed)
+            X_train, y_train = xy(fill_nans(dtr, column_with_nans, 0))
+            w = train_linear_regression(X_train, y_train)
+            X_val, y_val = xy(fill_nans(dv, column_with_nans, 0))
+            seed_scores.append(rmse(y_val, w[0] + X_val.dot(w[1:])))
+        return round(float(np.std(seed_scores)), 3)
+
+    q5 = run_q5()
+    q5
     return
 
 
 @app.cell
-def _(
-    column_with_nans,
-    df,
-    fill_nans,
-    np,
-    pd,
-    rmse,
-    split_shuffled,
-    train_linear_regression,
-    xy,
-):
+def _(column_with_nans, df, fill_nans, pd, rmse, split_shuffled, train_linear_regression, xy):
     # Question 6
-    df_train9, df_val9, df_test9 = split_shuffled(df, seed=9)
-    df_full = pd.concat([df_train9, df_val9])
-    X_full, y_full = xy(fill_nans(df_full, column_with_nans, 0))
-    w = train_linear_regression(X_full, y_full, r=0.001)
-    X_test, y_test = xy(fill_nans(df_test9, column_with_nans, 0))
-    round(rmse(y_test, w[0] + X_test.dot(w[1:])), 3)
+    def run_q6():
+        df_train9, df_val9, df_test9 = split_shuffled(df, seed=9)
+        df_full = pd.concat([df_train9, df_val9])
+        X_full, y_full = xy(fill_nans(df_full, column_with_nans, 0))
+        w = train_linear_regression(X_full, y_full, r=0.001)
+        X_test, y_test = xy(fill_nans(df_test9, column_with_nans, 0))
+        return round(rmse(y_test, w[0] + X_test.dot(w[1:])), 3)
+
+    q6 = run_q6()
+    q6
     return
 
 
