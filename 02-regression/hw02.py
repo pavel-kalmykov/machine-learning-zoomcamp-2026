@@ -10,7 +10,7 @@ def _():
     import pandas as pd
     import seaborn as sns
 
-    return np, pd, sns
+    return (np, pd, sns)
 
 
 @app.cell
@@ -39,13 +39,16 @@ def _(df, sns):
 
 
 @app.cell
-def _(df, np, pd):
+def _(df, pd):
     fuel = df.fuel_efficiency_mpg
-    pd.Series(
+    pd.DataFrame(
         {
-            "|mean - median| (small -> symmetric)": np.abs(fuel.mean() - fuel.median()),
-            "|skewness| (< 0.5 -> aprox. symmetric)": np.abs(fuel.skew()),
-        }
+            "valor": [abs(fuel.mean() - fuel.median()), fuel.skew()],
+        },
+        index=[
+            "|mean - median| (small -> symmetric)",
+            "|skewness| (< 0.5 -> aprox. symmetric)",
+        ],
     )
     return
 
@@ -69,136 +72,174 @@ def _(df):
 
 @app.cell
 def _(df, np, pd):
-    # Prepare and split the dataset (lección 2.4) + helpers centralizados
-    def split_shuffled(dframe, seed):
-        n = len(dframe)
+    # Prepare and split the dataset
+    def split_shuffled(
+        df: pd.DataFrame, seed: int
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        n = len(df)
         n_val = int(n * 0.2)
         n_test = int(n * 0.2)
         n_train = n - n_val - n_test
+
         np.random.seed(seed)
         idx = np.arange(n)
         np.random.shuffle(idx)
-        return (
-            dframe.iloc[idx[:n_train]],
-            dframe.iloc[idx[n_train : n_train + n_val]],
-            dframe.iloc[idx[n_train + n_val :]],
-        )
 
-    def xy(dframe):
-        return dframe.drop(columns=["fuel_efficiency_mpg"]), dframe[
-            "fuel_efficiency_mpg"
-        ].to_numpy()
+        df_train = df.iloc[idx[:n_train]]
+        df_val = df.iloc[idx[n_train : n_train + n_val]]
+        df_test = df.iloc[idx[n_train + n_val :]]
 
-    def fill_nans(dframe, column, value):
-        return dframe.fillna({column: value})
-
-    def train_linear_regression(X, y, r=0.0):
-        ones = np.ones(X.shape[0])
-        X = np.column_stack([ones, X])
-        XTX = X.T @ X + r * np.eye(X.shape[1])
-        return np.linalg.inv(XTX) @ X.T @ y
-
-    def rmse(y, y_pred):
-        error = y - y_pred
-        return float(np.sqrt((error * error).mean()))
+        return df_train, df_val, df_test
 
     df_train, df_val, df_test = split_shuffled(df, seed=42)
-    return (
-        df_test,
-        df_train,
-        df_val,
-        fill_nans,
-        rmse,
-        split_shuffled,
-        train_linear_regression,
-        xy,
+    return (df_train, df_val, df_test)
+
+
+@app.cell
+def _(column_with_nans, df_train, df_val, np, pd):
+    # Question 3
+    # We need to deal with missing values for the column from Q1.
+    # We have two options: fill it with 0 or with the mean of this variable.
+    # Try both options. For each, train a linear regression model without regularization using the code from the lessons.
+    # For computing the mean, use the training only!
+    # Use the validation dataset to evaluate the models and compare the RMSE of each option.
+    # Round the RMSE scores to 3 decimal digits using round(score, 3). This keeps the imputation difference visible in this release.
+    # Which option gives better RMSE?
+    def train_linear_regression(X, y):
+        ones = np.ones(X.shape[0])
+        X = np.column_stack([ones, X])
+
+        XTX = X.T.dot(X)
+        XTX_inv = np.linalg.inv(XTX)
+        w_full = XTX_inv.dot(X.T).dot(y)
+
+        return w_full[0], w_full[1:]
+
+    def rmse(y, y_pred):
+        se = (y - y_pred) ** 2
+        mse = se.mean()
+        return np.sqrt(mse)
+
+    X_train, y_train = (
+        df_train.drop(columns="fuel_efficiency_mpg"),
+        df_train.fuel_efficiency_mpg,
+    )
+    X_val, y_val = (
+        df_val.drop(columns="fuel_efficiency_mpg"),
+        df_val.fuel_efficiency_mpg,
     )
 
+    mean_hp = X_train[column_with_nans].mean()
+    X_zero_train = X_train.fillna({column_with_nans: 0})
+    X_zero_val = X_val.fillna({column_with_nans: 0})
+    X_mean_train = X_train.fillna({column_with_nans: mean_hp})
+    X_mean_val = X_val.fillna({column_with_nans: mean_hp})
 
-@app.cell
-def _(column_with_nans, df_train, df_val, fill_nans, rmse, train_linear_regression, xy):
-    # Question 3
-    def run_q3():
-        df_train_0 = fill_nans(df_train, column_with_nans, 0)
-        df_val_0 = fill_nans(df_val, column_with_nans, 0)
-        mean_hp = df_train[column_with_nans].mean()
-        df_train_m = fill_nans(df_train, column_with_nans, mean_hp)
-        df_val_m = fill_nans(df_val, column_with_nans, mean_hp)
+    w0_zero, w_zero = train_linear_regression(X_zero_train, y_train)
+    y_zero_pred = w0_zero + X_zero_val.dot(w_zero)
+    w0_mean, w_mean = train_linear_regression(X_mean_train, y_train)
+    y_mean_pred = w0_mean + X_mean_val.dot(w_mean)
 
-        X_train, y_train = xy(df_train_0)
-        w = train_linear_regression(X_train, y_train)
-        X_val, y_val = xy(df_val_0)
-        rmse_zero = round(rmse(y_val, w[0] + X_val.dot(w[1:])), 3)
-
-        X_train_m, y_train_m = xy(df_train_m)
-        w_m = train_linear_regression(X_train_m, y_train_m)
-        X_val_m, y_val_m = xy(df_val_m)
-        rmse_mean = round(rmse(y_val_m, w_m[0] + X_val_m.dot(w_m[1:])), 3)
-        return {"RMSE with 0": rmse_zero, "RMSE with mean": rmse_mean, "best": min(rmse_zero, rmse_mean)}
-
-    q3 = run_q3()
-    q3
-    return
+    scores = pd.Series(
+        {
+            "zero": rmse(y_val, y_zero_pred),
+            "mean": rmse(y_val, y_mean_pred),
+        }
+    ).round(3)
+    scores["best"] = scores.idxmin()
+    scores
+    return (X_zero_train, X_zero_val, rmse, y_train, y_val)
 
 
 @app.cell
-def _(column_with_nans, df_train, df_val, fill_nans, np, rmse, train_linear_regression, xy):
+def _(X_zero_train, X_zero_val, np, pd, rmse, y_train, y_val):
     # Question 4
-    def run_q4():
-        scores_r = {}
-        weights_evidence = {}
-        for r in [0, 0.01, 0.1, 1, 5, 10, 100]:
-            X_train_r, y_train_r = xy(fill_nans(df_train, column_with_nans, 0))
-            X_val_r, y_val_r = xy(fill_nans(df_val, column_with_nans, 0))
-            w = train_linear_regression(X_train_r, y_train_r, r)
-            scores_r[r] = round(rmse(y_val_r, w[0] + X_val_r.dot(w[1:])), 4)
-            if r in (0, 100):
-                weights_evidence[r] = [round(w[0], 3)] + [round(v, 3) for v in w[1:]]
-        best_r = min(scores_r, key=scores_r.get)
-        return scores_r, weights_evidence, best_r
+    # * Now let's train a regularized linear regression.
+    # * For this question, fill the NAs with 0.
+    # * Try different values of `r` from this list: `[0, 0.01, 0.1, 1, 5, 10, 100]`.
+    # * Use RMSE to evaluate the model on the validation dataset.
+    # * Round the RMSE scores to 4 decimal digits. This keeps the small but real
+    #   regularization differences visible instead of turning several choices into a tie.
+    # * Which `r` gives the best RMSE?
+    # If multiple options give the same best RMSE, select the smallest `r`.
+    def train_linear_regression_reg(X, y, r=0.001):
+        ones = np.ones(X.shape[0])
+        X = np.column_stack([ones, X])
 
-    scores_r, weights_evidence, best_r = run_q4()
+        XTX = X.T.dot(X)
+        XTX += r * np.eye(XTX.shape[0])
+        XTX_inv = np.linalg.inv(XTX)
+
+        w_full = XTX_inv.dot(X.T).dot(y)
+
+        return w_full[0], w_full[1:]
+
+    scores_r = pd.DataFrame()
+    for r in [0, 0.01, 0.1, 1, 5, 10, 100]:
+        w0_zero_r, w_zero_r = train_linear_regression_reg(X_zero_train, y_train, r)
+        y_zero_pred_r = w0_zero_r + X_zero_val.dot(w_zero_r)
+        scores_r[r] = {
+            "rmse": np.round(rmse(y_val, y_zero_pred_r), 4),
+            "w0": w0_zero_r.round(4),
+            "weights": w_zero_r.round(4),
+        }
+
+    scores_r = scores_r.T
+    scores_r["best"] = (scores_r["rmse"].idxmin(), scores_r["rmse"].min())
     scores_r
-    return (weights_evidence, best_r)
+    return (train_linear_regression_reg,)
 
 
 @app.cell
-def _(scores_r):
-    scores_r
-    return
-
-
-@app.cell
-def _(column_with_nans, df, fill_nans, np, rmse, split_shuffled, train_linear_regression, xy):
+def _(column_with_nans, df, np, rmse, split_shuffled, train_linear_regression):
     # Question 5
-    def run_q5():
-        seed_scores = []
-        for seed in range(10):
-            dtr, dv, _ = split_shuffled(df, seed)
-            X_train, y_train = xy(fill_nans(dtr, column_with_nans, 0))
-            w = train_linear_regression(X_train, y_train)
-            X_val, y_val = xy(fill_nans(dv, column_with_nans, 0))
-            seed_scores.append(rmse(y_val, w[0] + X_val.dot(w[1:])))
-        return round(float(np.std(seed_scores)), 3)
+    # * We used seed 42 for splitting the data. Let's find out how selecting the seed influences our score.
+    # * Try different seed values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].
+    # * For each seed, do the train/validation/test split with 60%/20%/20% distribution.
+    # * Fill the missing values with 0 and train a model without regularization.
+    # * For each seed, evaluate the model on the validation dataset and collect the RMSE scores.
+    # * What's the standard deviation of all the scores? To compute the standard deviation, use `np.std`.
+    # * Round the result to 3 decimal digits (round(std, 3))
+    # What's the value of std?
 
-    q5 = run_q5()
-    q5
+    seed_scores = []
+    for seed in range(10):
+        df_train_seed, df_val_seed, _ = split_shuffled(df, seed)
+        X_train_seed = df_train_seed.drop(columns="fuel_efficiency_mpg").fillna(
+            {column_with_nans: 0}
+        )
+        y_train_seed = df_train_seed.fuel_efficiency_mpg
+        w0_seed, w_seed = train_linear_regression(X_train_seed, y_train_seed)
+        X_val_seed = df_val_seed.drop(columns="fuel_efficiency_mpg").fillna(
+            {column_with_nans: 0}
+        )
+        y_val_seed = df_val_seed.fuel_efficiency_mpg
+        y_pred_seed = w0_seed + X_val_seed.dot(w_seed)
+        seed_scores.append(rmse(y_val_seed, y_pred_seed))
+
+    round(float(np.std(seed_scores)), 3)
     return
 
 
 @app.cell
-def _(column_with_nans, df, fill_nans, pd, rmse, split_shuffled, train_linear_regression, xy):
+def _(column_with_nans, df, pd, rmse, split_shuffled, train_linear_regression_reg):
     # Question 6
-    def run_q6():
-        df_train9, df_val9, df_test9 = split_shuffled(df, seed=9)
-        df_full = pd.concat([df_train9, df_val9])
-        X_full, y_full = xy(fill_nans(df_full, column_with_nans, 0))
-        w = train_linear_regression(X_full, y_full, r=0.001)
-        X_test, y_test = xy(fill_nans(df_test9, column_with_nans, 0))
-        return round(rmse(y_test, w[0] + X_test.dot(w[1:])), 3)
+    # * Split the dataset like previously, use seed 9.
+    # * Combine train and validation datasets.
+    # * Fill the missing values with 0 and train a model with `r=0.001`.
+    # * What's the RMSE on the test dataset?
 
-    q6 = run_q6()
-    q6
+    df_s9_train, df_s9_val, df_s9_test = split_shuffled(df, seed=9)
+    df_s9_full = pd.concat([df_s9_train, df_s9_val])
+    X_s9 = df_s9_full.drop(columns="fuel_efficiency_mpg").fillna({column_with_nans: 0})
+    y_s9 = df_s9_full.fuel_efficiency_mpg
+    w0, w = train_linear_regression_reg(X_s9, y_s9, r=0.001)
+    X_test = df_s9_test.drop(columns="fuel_efficiency_mpg").fillna(
+        {column_with_nans: 0}
+    )
+    y_test = df_s9_test.fuel_efficiency_mpg
+    y_pred = w0 + X_test.dot(w)
+    round(rmse(y_test, y_pred), 3)
     return
 
 
