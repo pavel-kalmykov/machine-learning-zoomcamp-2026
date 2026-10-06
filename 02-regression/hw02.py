@@ -185,7 +185,8 @@ def _(X_zero_train, X_zero_val, np, pd, rmse, y_train, y_val):
         }
 
     scores_r = scores_r.T
-    scores_r["best"] = (scores_r["rmse"].idxmin(), scores_r["rmse"].min())
+    best = (scores_r["rmse"].idxmin(), scores_r["rmse"].min())
+    print("best:", best)
     scores_r
     return (train_linear_regression_reg,)
 
