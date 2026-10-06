@@ -125,10 +125,8 @@ def _(column_with_nans, df_train, df_val, np, pd, xy):
         return np.sqrt(mse)
 
     mean_hp = df_train[column_with_nans].mean()
-    X_train, y_train = xy(df_train, column_with_nans, 0)
-    X_val, y_val = xy(df_val, column_with_nans, 0)
-    X_zero_train, _ = xy(df_train, column_with_nans, 0)
-    X_zero_val, _ = xy(df_val, column_with_nans, 0)
+    X_zero_train, y_train = xy(df_train, column_with_nans, 0)
+    X_zero_val, y_val = xy(df_val, column_with_nans, 0)
     X_mean_train, _ = xy(df_train, column_with_nans, mean_hp)
     X_mean_val, _ = xy(df_val, column_with_nans, mean_hp)
 
