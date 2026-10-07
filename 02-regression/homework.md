@@ -15,6 +15,8 @@ wget https://raw.githubusercontent.com/DataTalksClub/machine-learning-zoomcamp/m
 
 The goal of this homework is to create a regression model for predicting the car fuel efficiency (column `'fuel_efficiency_mpg'`).
 
+Loaded with `df = pd.read_csv("01-intro/car_fuel_efficiency_2026.csv")`, filtered to the five listed columns. Working notebook: `02-regression/hw02.py` (marimo).
+
 ### Preparing the dataset 
 
 Use only the following columns:
@@ -29,6 +31,8 @@ Use only the following columns:
 
 * Look at the `fuel_efficiency_mpg` variable. Does it have a long tail? 
 
+**No.** Skewness is 0.08 (well inside the ±0.5 symmetric range) and mean ≈ median, so no log transform is needed.
+
 ### Question 1
 
 There's one column with missing values. What is it?
@@ -38,8 +42,21 @@ There's one column with missing values. What is it?
 * `'vehicle_weight'`
 * `'model_year'`
 
+### Solution
 
-### Question 2
+```python
+df.columns[df.isnull().any()][0]
+```
+
+**Result**:
+
+```
+horsepower
+```
+
+**Answer**: `'horsepower'` (877 NaNs)
+
+## Question 2
 
 What's the median (50% percentile) for variable `'horsepower'`?
 
@@ -48,29 +65,21 @@ What's the median (50% percentile) for variable `'horsepower'`?
 - 304
 - 354
 
-### Prepare and split the dataset
-
-Shuffle the filtered dataset and create the split exactly as in the lecture:
+### Solution
 
 ```python
-n = len(df)
-n_val = int(n * 0.2)
-n_test = int(n * 0.2)
-n_train = n - n_val - n_test
-
-np.random.seed(42)
-idx = np.arange(n)
-np.random.shuffle(idx)
-
-df_train = df.iloc[idx[:n_train]]
-df_val = df.iloc[idx[n_train:n_train + n_val]]
-df_test = df.iloc[idx[n_train + n_val:]]
+df["horsepower"].median()
 ```
 
-For Q5, repeat the same block with each listed seed. For Q6, use seed `9`.
+**Result**:
 
+```
+254.0
+```
 
-### Question 3
+**Answer**: `254` (pandas skips the NaNs)
+
+## Question 3
 
 * We need to deal with missing values for the column from Q1.
 * We have two options: fill it with 0 or with the mean of this variable.
@@ -87,8 +96,58 @@ Options:
 - With mean
 - Both are equally good
 
+### Solution
 
-### Question 4
+```python
+def train_linear_regression(X, y):
+    ones = np.ones(X.shape[0])
+    X = np.column_stack([ones, X])
+
+    XTX = X.T.dot(X)
+    XTX_inv = np.linalg.inv(XTX)
+    w_full = XTX_inv.dot(X.T).dot(y)
+
+    return w_full[0], w_full[1:]
+
+
+def rmse(y, y_pred):
+    se = (y - y_pred) ** 2
+    mse = se.mean()
+    return np.sqrt(mse)
+
+
+X_train, y_train = df_train.drop(columns="fuel_efficiency_mpg"), df_train.fuel_efficiency_mpg
+X_val, y_val = df_val.drop(columns="fuel_efficiency_mpg"), df_val.fuel_efficiency_mpg
+
+mean_hp = X_train[column_with_nans].mean()   # training only
+X_zero_train = X_train.fillna({column_with_nans: 0})
+X_zero_val = X_val.fillna({column_with_nans: 0})
+X_mean_train = X_train.fillna({column_with_nans: mean_hp})
+X_mean_val = X_val.fillna({column_with_nans: mean_hp})
+
+w0_zero, w_zero = train_linear_regression(X_zero_train, y_train)
+y_zero_pred = w0_zero + X_zero_val.dot(w_zero)
+w0_mean, w_mean = train_linear_regression(X_mean_train, y_train)
+y_mean_pred = w0_mean + X_mean_val.dot(w_mean)
+
+scores = pd.Series({
+    "zero": rmse(y_val, y_zero_pred),
+    "mean": rmse(y_val, y_mean_pred),
+}).round(3)
+scores["best"] = scores.idxmin()
+```
+
+**Result**:
+
+```
+zero    2.205
+mean    2.202
+best:     mean
+```
+
+**Answer**: With mean (2.202 vs 2.205). The validation NaNs are also filled with the training mean.
+
+## Question 4
 
 * Now let's train a regularized linear regression.
 * For this question, fill the NAs with 0. 
@@ -110,8 +169,39 @@ Options:
 - 10
 - 100
 
+### Solution
 
-### Question 5 
+```python
+scores_r = pd.DataFrame()
+for r in [0, 0.01, 0.1, 1, 5, 10, 100]:
+    w0_zero_r, w_zero_r = train_linear_regression_reg(X_zero_train, y_train, r)
+    y_zero_pred_r = w0_zero_r + X_zero_val.dot(w_zero_r)
+    scores_r[r] = {
+        "rmse": np.round(rmse(y_val, y_zero_pred_r), 4),
+        "w0": w0_zero_r.round(4),
+        "weights": w_zero_r.round(4),
+    }
+
+scores_r = scores_r.T
+best = (scores_r["rmse"].idxmin(), scores_r["rmse"].min())
+```
+
+**Result**:
+
+```
+r=0:    2.2053
+r=0.01: 2.2058
+r=0.1:  2.2241
+r=1:    2.3492
+r=5:    2.4094
+r=10:   2.4195
+r=100:  2.4292
+best:   (0, 2.2053)
+```
+
+**Answer**: `0` (best RMSE 2.2053; with this dataset regularization does not improve validation RMSE, so the tie rule selects the smallest r)
+
+## Question 5 
 
 * We used seed 42 for splitting the data. Let's find out how selecting the seed influences our score.
 * Try different seed values: `[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]`.
@@ -133,8 +223,36 @@ What's the value of std?
 > If it's high, the values are different. 
 > If standard deviation of scores is low, then our model is *stable*.
 
+### Solution
 
-### Question 6
+```python
+seed_scores = []
+for seed in range(10):
+    df_train_seed, df_val_seed, _ = split_shuffled(df, seed)
+    X_train = df_train_seed.drop(columns="fuel_efficiency_mpg").fillna(
+        {column_with_nans: 0}
+    )
+    y_train = df_train_seed.fuel_efficiency_mpg
+    w0, w = train_linear_regression(X_train, y_train)
+    X_val = df_val_seed.drop(columns="fuel_efficiency_mpg").fillna(
+        {column_with_nans: 0}
+    )
+    y_val = df_val_seed.fuel_efficiency_mpg
+    y_pred = w0 + X_val.dot(w)
+    seed_scores.append(rmse(y_val, y_pred))
+
+round(float(np.std(seed_scores)), 3)
+```
+
+**Result**:
+
+```
+0.029
+```
+
+**Answer**: `0.029` (low std: the model is stable across seeds)
+
+## Question 6
 
 * Split the dataset like previously, use seed 9.
 * Combine train and validation datasets.
@@ -148,18 +266,29 @@ Options:
 - 22.10
 - 221.0
 
+### Solution
+
+```python
+df_s9_train, df_s9_val, df_s9_test = split_shuffled(df, seed=9)
+df_s9_full = pd.concat([df_s9_train, df_s9_val])
+X_s9 = df_s9_full.drop(columns="fuel_efficiency_mpg").fillna({column_with_nans: 0})
+y_s9 = df_s9_full.fuel_efficiency_mpg
+w0, w = train_linear_regression_reg(X_s9, y_s9, r=0.001)
+X_test = df_s9_test.drop(columns="fuel_efficiency_mpg").fillna({column_with_nans: 0})
+y_test = df_s9_test.fuel_efficiency_mpg
+y_pred = w0 + X_test.dot(w)
+round(rmse(y_test, y_pred), 3)
+```
+
+**Result**:
+
+```
+2.236
+```
+
+**Answer**: `2.236`
+
 ## Submit the results
 
 * Submit your results here: https://courses.datatalks.club/ml-zoomcamp-2026/homework/hw02
 * The numerical options are calculated from the pinned 2026 release. Use the value that matches your calculation; do not choose a merely close value.
-
-## Answers
-
-- Q1. Column with missing values. **horsepower** (877 NaNs)
-- Q2. Median horsepower. **254**
-- Q3. fillna with 0 vs with mean (mean from train only), RMSE on validation. **With mean** (2.202 vs 2.205)
-- Q4. Regularization r with fillna 0. **0** (best RMSE 2.2053)
-- Q5. Std of validation RMSE across seeds 0-9. **0.029**
-- Q6. Seed 9, train+validation combined, r=0.001, RMSE on test. **2.236**
-
-Working notebook: `02-regression/hw02.py`.
