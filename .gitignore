@@ -64,3 +64,4 @@ mlruns/
 
 # Obsidian
 .obsidian/
+.playwright-cli/
