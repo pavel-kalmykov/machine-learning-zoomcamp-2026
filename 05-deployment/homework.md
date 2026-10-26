@@ -52,6 +52,20 @@ It must be:
 Run `uv --version` and record the version in your notes. This is a setup check,
 not a graded answer: your local `uv` version is not a property of the model.
 
+### Solution
+
+```bash
+uv --version
+```
+
+**Result**:
+
+```text
+uv 0.12.13 (0ebbd9274 2026-09-10 aarch64-apple-darwin)
+```
+
+**Answer**: `0.12.13` (not graded).
+
 ## Question 2 — locked dependency
 
 Open `pyproject.toml` and `uv.lock`. Which Scikit-Learn version is part of the
@@ -63,6 +77,23 @@ Open `pyproject.toml` and `uv.lock`. Which Scikit-Learn version is part of the
 - `2.0.0`
 
 Do not regenerate the lockfile for the graded run; use `uv sync --locked`.
+
+### Solution
+
+I used `uv sync --locked` for the environment and checked Scikit-Learn's
+version with:
+
+```bash
+uv run python -c "import sklearn; print(sklearn.__version__)"
+```
+
+**Result**:
+
+```text
+1.7.2
+```
+
+**Answer**: `1.7.2`
 
 ## Question 3 — load the model
 
@@ -85,6 +116,33 @@ Write a Python script that loads `pipeline.bin` with `pickle` and calls
 Report the probability of conversion rounded to three decimal places. The
 grader accepts an absolute error of at most `0.005`; do not choose the nearest
 answer from a list.
+
+### Solution
+
+I used [q3.py](q3.py) to load the pipeline with `pickle` and normalize the lead
+before calling `predict_proba`:
+
+```python
+with MODEL_PATH.open("rb") as model_file:
+    pipeline = pickle.load(model_file)
+
+record = normalize_record(CLIENT)
+first = float(pipeline.predict_proba([record])[0, 1])
+```
+
+The script rounds the probability to three decimal places:
+
+```bash
+uv run python q3.py
+```
+
+**Result**:
+
+```text
+{'conversion_probability': 0.533, 'conversion': True}
+```
+
+**Answer**: `0.533`
 
 ## Question 4 — serve the model
 
@@ -130,6 +188,21 @@ Report `conversion_probability` rounded to three decimal places. The same
 `0.005` absolute tolerance applies. The response must contain a probability in
 `[0, 1]` and a boolean `conversion` field.
 
+### Solution
+
+I sent the second lead to `POST /predict` using the curl command above:
+
+**Result**:
+
+```json
+{
+  "conversion_probability": 0.769799,
+  "conversion": true
+}
+```
+
+**Answer**: `0.770`
+
 ## Container
 
 The checked-in `Dockerfile` is the canonical 2026 container configuration. It uses
@@ -156,6 +229,17 @@ This question checks a version-controlled declaration. The displayed size of a
 local Docker image is not graded because it varies by platform, architecture,
 Docker version, and cached layers.
 
+### Solution
+
+The [`Dockerfile`](Dockerfile) declares the Python base image in `FROM`
+(the digest pins the image):
+
+```dockerfile
+FROM python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3
+```
+
+**Answer**: `python:3.11.15-slim-bookworm`
+
 ## Question 6 — run the container
 
 Run the same request from Question 4 against the container. You can use the
@@ -175,6 +259,48 @@ curl -s http://localhost:9696/health
 
 returns `{"status":"ok", ...}` and the model checksum recorded in
 `model_metadata.json`.
+
+### Solution
+
+I compared the model checksum in `model_metadata.json` with `/health` on
+port `9696`:
+
+```bash
+cat model_metadata.json | jq .model_sha256
+```
+
+**Result**:
+
+```text
+"1646bbdcd38d4f044da6b630c5b332c93a314245a8c21929011c42de51f629f1"
+```
+
+```bash
+curl -s http://localhost:9696/health
+```
+
+**Result**:
+
+```json
+{"status":"ok","model_sha256":"1646bbdcd38d4f044da6b630c5b332c93a314245a8c21929011c42de51f629f1","feature_defaults_sha256":"1694f842b908fac9f53c0cc19be6d91f934befc63af23cc32fefafde69acd0cd"}
+```
+
+I used the provided client to send the same lead as Q4:
+
+```bash
+uv run q6_test.py
+```
+
+**Result**:
+
+```text
+{'conversion_probability': 0.769799, 'conversion': True}
+```
+
+The checksum matches and `/health` reports `ok`. The prediction is the same
+as in Q4.
+
+**Answer**: `0.770`
 
 ## Submit the results
 
